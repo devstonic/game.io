@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Морской бой для двоих</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .game-container {
+            background: white;
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        .game-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .game-title {
+            font-size: 36px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .turn-indicator {
+            font-size: 24px;
+            padding: 10px;
+            border-radius: 10px;
+            background: #f0f0f0;
+            display: inline-block;
+        }
+        
+        .player1-turn {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .player2-turn {
+            background: #f44336;
+            color: white;
+        }
+        
+        .boards-container {
+            display: flex;
+            gap: 40px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .board-wrapper {
+            text-align: center;
+        }
+        
+        .board-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .player1-board .board-title {
+            color: #4CAF50;
+        }
+        
+        .player2-board .board-title {
+            color: #f44336;
+        }
+        
+        .board {
+            display: grid;
+            grid-template-columns: repeat(10, 40px);
+            grid-template-rows: repeat(10, 40px);
+            gap: 2px;
+            background: #333;
+            padding: 2px;
+            border-radius: 5px;
+        }
+        
+        .cell {
+            background: #87CEEB;
+            border-radius: 3px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        
+        .cell:hover {
+            background: #5F9EA0;
+        }
+        
+        .cell.ship {
+            background: #696969;
+        }
+        
+        .cell.hit {
+            background: #f44336;
+            position: relative;
+        }
+        
+        .cell.hit::after {
+            content: "✕";
+            color: white;
+            font-size: 24px;
+        }
+        
+        .cell.miss {
+            background: #4169E1;
+            position: relative;
+        }
+        
+        .cell.miss::after {
+            content: "•";
+            color: white;
+            font-size: 30px;
+        }
+        
+        .cell.ship.hit {
+            background: #f44336;
+        }
+        
+        .cell:active {
+            transform: scale(0.95);
+        }
+        
+        .phase-indicator {
+            margin: 20px 0;
+            padding: 15px;
+            background: #ffd700;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .control-panel {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        
+        button {
+            padding: 15px 30px;
+            font-size: 18px;
+            border: none;
+            border-radius: 10px;
+            background: #667eea;
+            color: white;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s;
+        }
+        
+        button:hover {
+            background: #764ba2;
+            transform: scale(1.05);
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .message {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fff3cd;
+            border: 1px solid #ffeeba;
+            border-radius: 10px;
+            color: #856404;
+            font-size: 18px;
+            text-align: center;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+            font-size: 18px;
+        }
+        
+        .ship-indicator {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 10px;
+        }
+        
+        .ship-item {
+            width: 30px;
+            height: 30px;
+            background: #696969;
+            border-radius: 3px;
+        }
+        
+        .ship-item.sunk {
+            background: #f44336;
+            opacity: 0.5;
+        }
+        
+        @media (max-width: 768px) {
+            .board {
+                grid-template-columns: repeat(10, 30px);
+                grid-template-rows: repeat(10, 30px);
+            }
+            
+            .game-title {
+                font-size: 24px;
+            }
+            
+            .turn-indicator {
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <div class="game-title">⚓ МОРСКОЙ БОЙ ⚓</div>
+            <div id="turnIndicator" class="turn-indicator player1-turn">Ход Игрока 1</div>
+        </div>
+        
+        <div id="phaseIndicator" class="phase-indicator">Этап расстановки кораблей</div>
+        
+        <div class="boards-container">
+            <div class="board-wrapper player1-board">
+                <div class="board-title">Игрок 1</div>
+                <div id="board1" class="board"></div>
+                <div class="ship-indicator" id="ships1"></div>
+            </div>
+            
+            <div class="board-wrapper player2-board">
+                <div class="board-title">Игрок 2</div>
+                <div id="board2" class="board"></div>
+                <div class="ship-indicator" id="ships2"></div>
+            </div>
+        </div>
+        
+        <div class="stats">
+            <div>Счет: <span id="score1">0</span> : <span id="score2">0</span></div>
+        </div>
+        
+        <div id="message" class="message">Игрок 1: разместите свои корабли</div>
+        
+        <div class="control-panel">
+            <button id="randomBtn" class="random-btn">Случайная расстановка</button>
+            <button id="readyBtn" class="ready-btn" disabled>Готов</button>
+            <button id="newGameBtn">Новая игра</button>
+        </div>
+    </div>
+
+    <script>
+        const BOARD_SIZE = 10;
+        
+        // Класс для управления кораблями
+        class Ship {
+            constructor(length) {
+                this.length = length;
+                this.hits = 0;
+                this.cells = [];
+                this.sunk = false;
+            }
+            
+            hit() {
+                this.hits++;
+                if (this.hits === this.length) {
+                    this.sunk = true;
+                }
+            }
+            
+            isSunk() {
+                return this.sunk;
+            }
+        }
+        
+        class BattleshipGame {
+            constructor() {
+                this.board1 = this.createEmptyBoard();
+                this.board2 = this.createEmptyBoard();
+                this.ships1 = [];
+                this.ships2 = [];
+                this.currentPlayer = 1;
+                this.phase = 'placement'; // 'placement' или 'battle'
+                self = this;
+                
+                // Состояние расстановки для каждого игрока
+                this.placementPlayer = 1;
+                this.placingShipLength = 4; // Начинаем с 4-палубного
+                this.placingShipDirection = 'horizontal';
+                
+                // Флаги готовности
+                this.player1Ready = false;
+                this.player2Ready = false;
+                
+                // Счет
+                this.score1 = 0;
+                this.score2 = 0;
+                
+                // Статистика для подсчета очков
+                this.totalCells1 = 0;
+                this.totalCells2 = 0;
+            }
+            
+            createEmptyBoard() {
+                return Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill('empty'));
+            }
+            
+            // Проверка возможности размещения корабля
+            canPlaceShip(board, row, col, length, direction) {
+                if (direction === 'horizontal') {
+                    if (col + length > BOARD_SIZE) return false;
+                    for (let i = 0; i < length; i++) {
+                        if (!this.isCellAvailable(board, row, col + i)) return false;
+                    }
+                } else {
+                    if (row + length > BOARD_SIZE) return false;
+                    for (let i = 0; i < length; i++) {
+                        if (!this.isCellAvailable(board, row + i, col)) return false;
+                    }
+                }
+                return true;
+            }
+            
+            // Проверка доступности клетки (включая соседние)
+            isCellAvailable(board, row, col) {
+                // Проверяем саму клетку
+                if (board[row][col] !== 'empty') return false;
+                
+                // Проверяем все соседние клетки (включая диагональные)
+                for (let dr = -1; dr <= 1; dr++) {
+                    for (let dc = -1; dc <= 1; dc++) {
+                        const newRow = row + dr;
+                        const newCol = col + dc;
+                        if (newRow >= 0 && newRow < BOARD_SIZE && newCol >= 0 && newCol < BOARD_SIZE) {
+                            if (board[newRow][newCol] !== 'empty' && board[newRow][newCol] !== 'miss' && board[newRow][newCol] !== 'hit') {
+                                return false;
+                            }
+                        }
+                    }
+                }
+                return true;
+            }
+            
+            // Размещение корабля
+            placeShip(board, ships, row, col, length, direction) {
+                const ship = new Ship(length);
+                
+                if (direction === 'horizontal') {
+                    for (let i = 0; i < length; i++) {
+                        board[row][col + i] = 'ship';
+                        ship.cells.push({row, col: col + i});
+                    }
+                } else {
+                    for (let i = 0; i < length; i++) {
+                        board[row + i][col] = 'ship';
+                        ship.cells.push({row: row + i, col});
+                    }
+                }
+                
+                ships.push(ship);
+                return true;
+            }
+            
+            // Случайная расстановка
+            randomPlacement(board, ships) {
+                // Очищаем текущие корабли
+                for (let row = 0; row < BOARD_SIZE; row++) {
+                    for (let col = 0; col < BOARD_SIZE; col++) {
+                        board[row][col] = 'empty';
+                    }
+                }
+                ships.length = 0;
+                
+                const lengths = [4, 3, 3, 2, 2, 2, 1, 1, 1, 1];
+                
+                for (let length of lengths) {
+                    let placed = false;
+                    let attempts = 0;
+                    
+                    while (!placed && attempts < 1000) {
+                        const row = Math.floor(Math.random() * BOARD_SIZE);
+                        const col = Math.floor(Math.random() * BOARD_SIZE);
+                        const direction = Math.random() < 0.5 ? 'horizontal' : 'vertical';
+                        
+                        if (this.canPlaceShip(board, row, col, length, direction)) {
+                            this.placeShip(board, ships, row, col, length, direction);
+                            placed = true;
+                        }
+                        attempts++;
+                    }
+                    
+                    if (!placed) {
+                        // Если не удалось разместить, пробуем снова
+                        return this.randomPlacement(board, ships);
+                    }
+                }
+                
+                return true;
+            }
+            
+            // Проверка завершения расстановки
+            checkPlacementComplete(player) {
+                const ships = player === 1 ? this.ships1 : this.ships2;
+                const lengths = ships.map(s => s.length).sort((a,b) => b-a);
+                const expected = [4, 3, 3, 2, 2, 2, 1, 1, 1, 1];
+                
+                if (lengths.length !== 10) return false;
+                
+                for (let i = 0; i < 10; i++) {
+                    if (lengths[i] !== expected[i]) return false;
+                }
+                
+                return true;
+            }
+            
+            // Обработка выстрела
+            makeShot(board, ships, row, col) {
+                if (board[row][col] === 'ship') {
+                    board[row][col] = 'hit';
+                    
+                    // Находим корабль и отмечаем попадание
+                    for (let ship of ships) {
+                        const cell = ship.cells.find(c => c.row === row && c.col === col);
+                        if (cell) {
+                            ship.hit();
+                            
+                            // Проверяем, потоплен ли корабль
+                            if (ship.isSunk()) {
+                                this.markSunkShip(board, ship);
+                            }
+                            break;
+                        }
+                    }
+                    
+                    return 'hit';
+                } else if (board[row][col] === 'empty') {
+                    board[row][col] = 'miss';
+                    return 'miss';
+                }
+                
+                return 'invalid';
+            }
+            
+            // Отметка потопленного корабля (для визуального эффекта)
+            markSunkShip(board, ship) {
+                // Здесь можно добавить специальную отметку, но пока просто оставляем как hit
+            }
+            
+            // Проверка победы
+            checkWin(ships) {
+                return ships.every(ship => ship.isSunk());
+            }
+            
+            // Подсчет очков
+            calculateScore() {
+                // Обновляем счет на основе потопленных кораблей
+                this.score1 = this.ships2.filter(s => s.isSunk()).length;
+                this.score2 = this.ships1.filter(s => s.isSunk()).length;
+            }
+            
+            // Сброс игры
+            reset() {
+                this.board1 = this.createEmptyBoard();
+                this.board2 = this.createEmptyBoard();
+                this.ships1 = [];
+                this.ships2 = [];
+                this.currentPlayer = 1;
+                this.phase = 'placement';
+                this.placementPlayer = 1;
+                this.player1Ready = false;
+                this.player2Ready = false;
+                this.score1 = 0;
+                this.score2 = 0;
+            }
+        }
+        
+        // Инициализация игры
+        const game = new BattleshipGame();
+        
+        // Функция отрисовки доски
+        function renderBoard(boardElement, board, ships, isEnemy = false, currentPlayer, gamePhase) {
+            boardElement.innerHTML = '';
+            
+            for (let row = 0; row < BOARD_SIZE; row++) {
+                for (let col = 0; col < BOARD_SIZE; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    
+                    const cellValue = board[row][col];
+                    
+                    if (cellValue === 'ship') {
+                        if (!isEnemy || (currentPlayer === game.placementPlayer && gamePhase === 'placement')) {
+                            cell.classList.add('ship');
+                        }
+                    } else if (cellValue === 'hit') {
+                        cell.classList.add('hit');
+                    } else if (cellValue === 'miss') {
+                        cell.classList.add('miss');
+                    }
+                    
+                    boardElement.appendChild(cell);
+                }
+            }
+        }
+        
+        // Обновление отображения кораблей
+        function updateShipIndicators() {
+            const ships1Element = document.getElementById('ships1');
+            const ships2Element = document.getElementById('ships2');
+            
+            ships1Element.innerHTML = '';
+            ships2Element.innerHTML = '';
+            
+            game.ships1.forEach(ship => {
+                const shipElement = document.createElement('div');
+                shipElement.className = 'ship-item' + (ship.isSunk() ? ' sunk' : '');
+                ships1Element.appendChild(shipElement);
+            });
+            
+            game.ships2.forEach(ship => {
+                const shipElement = document.createElement('div');
+                shipElement.className = 'ship-item' + (ship.isSunk() ? ' sunk' : '');
+                ships2Element.appendChild(shipElement);
+            });
+        }
+        
+        // Обновление интерфейса
+        function updateUI() {
+            const board1Element = document.getElementById('board1');
+            const board2Element = document.getElementById('board2');
+            const turnIndicator = document.getElementById('turnIndicator');
+            const phaseIndicator = document.getElementById('phaseIndicator');
+            const messageElement = document.getElementById('message');
+            const randomBtn = document.getElementById('randomBtn');
+            const readyBtn = document.getElementById('readyBtn');
+            const score1Element = document.getElementById('score1');
+            const score2Element = document.getElementById('score2');
+            
+            // Отрисовка досок
+            const isPlayer1BoardEnemy = game.phase === 'battle' && game.currentPlayer === 2;
+            const isPlayer2BoardEnemy = game.phase === 'battle' && game.currentPlayer === 1;
+            
+            renderBoard(board1Element, game.board1, game.ships1, isPlayer1BoardEnemy, 1, game.phase);
+            renderBoard(board2Element, game.board2, game.ships2, isPlayer2BoardEnemy, 2, game.phase);
+            
+            // Обновление индикаторов кораблей
+            updateShipIndicators();
+            
+            // Обновление индикатора хода
+            if (game.phase === 'placement') {
+                phaseIndicator.textContent = `Этап расстановки кораблей (Игрок ${game.placementPlayer})`;
+                turnIndicator.textContent = `Расставляет Игрок ${game.placementPlayer}`;
+                turnIndicator.className = `turn-indicator player${game.placementPlayer}-turn`;
+                
+                if (game.placementPlayer === 1) {
+                    messageElement.textContent = 'Игрок 1: разместите свои корабли';
+                } else {
+                    messageElement.textContent = 'Игрок 2: разместите свои корабли';
+                }
+                
+                randomBtn.disabled = false;
+                
+                // Проверяем готовность текущего игрока
+                if (game.placementPlayer === 1) {
+                    readyBtn.disabled = !game.checkPlacementComplete(1) || game.player1Ready;
+                } else {
+                    readyBtn.disabled = !game.checkPlacementComplete(2) || game.player2Ready;
+                }
+            } else {
+                phaseIndicator.textContent = 'Битва!';
+                turnIndicator.textContent = `Ход Игрока ${game.currentPlayer}`;
+                turnIndicator.className = `turn-indicator player${game.currentPlayer}-turn`;
+                messageElement.textContent = `Игрок ${game.currentPlayer}: сделайте выстрел`;
+                randomBtn.disabled = true;
+                readyBtn.disabled = true;
+            }
+            
+            // Обновление счета
+            game.calculateScore();
+            score1Element.textContent = game.score1;
+            score2Element.textContent = game.score2;
+            
+            // Проверка победы
+            if (game.phase === 'battle') {
+                if (game.checkWin(game.ships2)) {
+                    messageElement.textContent = '🎉 ИГРОК 1 ПОБЕДИЛ! 🎉';
+                    readyBtn.disabled = false;
+                } else if (game.checkWin(game.ships1)) {
+                    messageElement.textContent = '🎉 ИГРОК 2 ПОБЕДИЛ! 🎉';
+                    readyBtn.disabled = false;
+                }
+            }
+        }
+        
+        // Обработка клика по клетке
+        function handleCellClick(event) {
+            const cell = event.target;
+            if (!cell.classList.contains('cell')) return;
+            
+            const row = parseInt(cell.dataset.row);
+            const col = parseInt(cell.dataset.col);
+            const boardId = cell.parentElement.id;
+            
+            if (game.phase === 'placement') {
+                // Режим расстановки
+                const currentBoard = game.placementPlayer === 1 ? game.board1 : game.board2;
+                const currentShips = game.placementPlayer === 1 ? game.ships1 : game.ships2;
+                
+                // Определяем длину следующего корабля для размещения
+                const lengths = [4, 3, 3, 2, 2, 2, 1, 1, 1, 1];
+                const placedLengths = currentShips.map(s => s.length);
+                let nextLength = 4;
+                
+                for (let len of lengths) {
+                    const count = placedLengths.filter(l => l === len).length;
+                    const totalCount = lengths.filter(l => l === len).length;
+                    if (count < totalCount) {
+                        nextLength = len;
+                        break;
+                    }
+                }
+                
+                // Размещаем корабль
+                if (game.canPlaceShip(currentBoard, row, col, nextLength, game.placingShipDirection)) {
+                    game.placeShip(currentBoard, currentShips, row, col, nextLength, game.placingShipDirection);
+                    
+                    // Меняем направление для следующего корабля
+                    game.placingShipDirection = game.placingShipDirection === 'horizontal' ? 'vertical' : 'horizontal';
+                    
+                    updateUI();
+                }
+            } else if (game.phase === 'battle') {
+                // Режим битвы
+                const enemyBoard = game.currentPlayer === 1 ? game.board2 : game.board1;
+                const enemyShips = game.currentPlayer === 1 ? game.ships2 : game.ships1;
+                
+                // Проверяем, можно ли стрелять в эту клетку
+                if (enemyBoard[row][col] === 'empty' || enemyBoard[row][col] === 'ship') {
+                    const result = game.makeShot(enemyBoard, enemyShips, row, col);
+                    
+                    if (result !== 'invalid') {
+                        // Проверяем победу
+                        if (game.checkWin(enemyShips)) {
+                            updateUI();
+                            return;
+                        }
+                        
+                        // Если промах, меняем игрока
+                        if (result === 'miss') {
+                            game.currentPlayer = game.currentPlayer === 1 ? 2 : 1;
+                        }
+                        
+                        updateUI();
+                    }
+                }
+            }
+        }
+        
+        // Случайная расстановка
+        document.getElementById('randomBtn').addEventListener('click', () => {
+            if (game.phase === 'placement') {
+                if (game.placementPlayer === 1) {
+                    game.randomPlacement(game.board1, game.ships1);
+                } else {
+                    game.randomPlacement(game.board2, game.ships2);
+                }
+                updateUI();
+            }
+        });
+        
+        // Готовность игрока
+        document.getElementById('readyBtn').addEventListener('click', () => {
+            if (game.phase === 'placement') {
+                if (game.placementPlayer === 1 && game.checkPlacementComplete(1)) {
+                    game.player1Ready = true;
+                    game.placementPlayer = 2;
+                    game.placingShipDirection = 'horizontal';
+                } else if (game.placementPlayer === 2 && game.checkPlacementComplete(2)) {
+                    game.player2Ready = true;
+                    
+                    // Проверяем, готовы ли оба игрока
+                    if (game.player1Ready && game.player2Ready) {
+                        game.phase = 'battle';
+                        game.currentPlayer = 1;
+                    } else {
+                        game.placementPlayer = 1;
+                    }
+                }
+                updateUI();
+            }
+        });
+        
+        // Новая игра
+        document.getElementById('newGameBtn').addEventListener('click', () => {
+            game.reset();
+            updateUI();
+        });
+        
+        // Добавляем обработчики кликов
+        document.getElementById('board1').addEventListener('click', handleCellClick);
+        document.getElementById('board2').addEventListener('click', handleCellClick);
+        
+        // Добавляем возможность менять направление клавишей R
+        document.addEventListener('keydown', (e) => {
+            if (e.key.toLowerCase() === 'r' && game.phase === 'placement') {
+                game.placingShipDirection = game.placingShipDirection === 'horizontal' ? 'vertical' : 'horizontal';
+                const message = document.getElementById('message');
+                message.textContent = `Направление: ${game.placingShipDirection === 'horizontal' ? 'горизонтальное' : 'вертикальное'} (нажмите R для смены)`;
+            }
+        });
+        
+        // Начальная отрисовка
+        updateUI();
+    </script>
+</body>
+</html>
